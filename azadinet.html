@@ -512,4 +512,15 @@
             const notification = document.createElement('div');
             const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
             const icon = type === 'success' ? '<i class="fa-solid fa-check-circle"></i>' : '<i class="fa-solid fa-times-circle"></i>';
-            notification.className = `notification-toast fixed bottom-5 right-5 ${bgColor} text-white px-5 py-3 rounded-xl shadow-lg z-50 flex items-center
+            notification.className = `notification-toast fixed bottom-5 right-5 ${bgColor} text-white px-5 py-3 rounded-xl shadow-lg z-50 flex items-center space-x-3 space-x-reverse animate-fade-in`;
+            notification.innerHTML = `<span class="text-xl">${icon}</span> <span class="font-medium">${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.transition = 'opacity 0.5s ease';
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
