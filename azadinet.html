@@ -276,23 +276,30 @@
 
         /**
          * Fetches the subscription link content, parses it, and populates the UI.
-         * This version uses a CORS proxy to prevent browser security errors.
+         * This version uses a CORS proxy and handles both Base64 and plain text formats.
          */
         async function fetchAndPopulateConfigs() {
             const subLink = document.getElementById('subLink').textContent.trim();
-            const urlWithCacheBuster = `${subLink}?v=${new Date().getTime()}`;
-            
-            // **تغییر اصلی:** استفاده از پراکسی CORS
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(subLink)}`;
             
             try {
                 const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error(`خطای شبکه: ${response.statusText}`);
+                if (!response.ok) throw new Error(`خطای شبکه در دسترسی به لینک: ${response.statusText}`);
                 
-                const data = await response.text();
-                // It's crucial that the content of the subscription link is Base64 encoded.
-                const decodedData = atob(data); 
-                const configLinks = decodedData.split(/\s+/).filter(Boolean);
+                const rawData = await response.text();
+                let configLinks = [];
+
+                // **NEW LOGIC: Try to decode Base64, if it fails, treat as plain text.**
+                try {
+                    const decodedData = atob(rawData);
+                    configLinks = decodedData.split(/\s+/).filter(Boolean);
+                } catch (e) {
+                    console.log("Decoding Base64 failed, treating content as plain text.");
+                    configLinks = rawData.split(/\s+/).filter(Boolean);
+                }
+
+                // Filter out any non-config lines
+                configLinks = configLinks.filter(link => /^(vless|vmess|trojan|ss|ssr|hy2|tuic):\/\//.test(link));
 
                 liveConfigs = [];
                 configLinks.forEach((link, index) => {
@@ -302,7 +309,7 @@
                 });
 
                 if (liveConfigs.length === 0) {
-                    throw new Error("لینک اشتراک خالی است یا محتوای آن قابل خواندن نیست.");
+                    throw new Error("هیچ کانفیگ معتبری در لینک اشتراک یافت نشد. لطفاً محتوای فایل را بررسی کنید.");
                 }
 
                 buildConfigList();
@@ -313,8 +320,8 @@
                 console.error('Failed to fetch or parse subscription link:', error);
                 const container = document.getElementById('config-list-container');
                 container.innerHTML = `<div class="text-center text-red-400 p-4 bg-red-500/10 rounded-lg">
-                    <p class="font-bold"><i class="fa-solid fa-circle-exclamation ml-2"></i>خطا در بارگذاری سرورها</p>
-                    <p class="text-xs mt-2">لطفاً از صحت لینک اشتراک، فرمت Base64 محتوای آن و اتصال اینترنت خود مطمئن شوید.</p>
+                    <p class="font-bold"><i class="fa-solid fa-circle-exclamation ml-2"></i>${error.message}</p>
+                    <p class="text-xs mt-2">مطمئن شوید لینک اشتراک صحیح و عمومی (Public) است.</p>
                 </div>`;
                 document.getElementById('configSelect').innerHTML = `<option>خطا در بارگذاری</option>`;
                 document.getElementById('qrcode').innerHTML = '';
