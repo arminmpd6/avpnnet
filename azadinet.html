@@ -264,7 +264,6 @@
 
         // --- CORE FUNCTIONS ---
         document.addEventListener('DOMContentLoaded', function() {
-            // Fetch configs from the subscription link as soon as the page loads
             fetchAndPopulateConfigs();
             
             const observer = new IntersectionObserver((entries) => {
@@ -277,22 +276,25 @@
 
         /**
          * Fetches the subscription link content, parses it, and populates the UI.
-         * This is the new core function to solve the caching problem.
+         * This version uses a CORS proxy to prevent browser security errors.
          */
         async function fetchAndPopulateConfigs() {
             const subLink = document.getElementById('subLink').textContent.trim();
-            // Add a cache-busting parameter to the URL
             const urlWithCacheBuster = `${subLink}?v=${new Date().getTime()}`;
             
+            // **تغییر اصلی:** استفاده از پراکسی CORS
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlWithCacheBuster)}`;
+            
             try {
-                const response = await fetch(urlWithCacheBuster);
-                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error(`خطای شبکه: ${response.statusText}`);
                 
                 const data = await response.text();
-                const decodedData = atob(data); // Decode from base64
-                const configLinks = decodedData.split(/\s+/).filter(Boolean); // Split by newlines/spaces and remove empty lines
+                // It's crucial that the content of the subscription link is Base64 encoded.
+                const decodedData = atob(data); 
+                const configLinks = decodedData.split(/\s+/).filter(Boolean);
 
-                liveConfigs = []; // Clear previous configs
+                liveConfigs = [];
                 configLinks.forEach((link, index) => {
                     const nameMatch = link.match(/#(.+)/);
                     const name = nameMatch ? decodeURIComponent(nameMatch[1]) : `سرور ${index + 1}`;
@@ -303,7 +305,6 @@
                     throw new Error("لینک اشتراک خالی است یا محتوای آن قابل خواندن نیست.");
                 }
 
-                // Now populate the UI with the fetched data
                 buildConfigList();
                 buildQrCodeSelect();
                 generateQR();
@@ -311,18 +312,18 @@
             } catch (error) {
                 console.error('Failed to fetch or parse subscription link:', error);
                 const container = document.getElementById('config-list-container');
-                container.innerHTML = `<p class="text-center text-red-400 p-8"><i class="fa-solid fa-circle-exclamation mr-2"></i>خطا در بارگذاری سرورها. لطفاً از صحت لینک اشتراک و اتصال اینترنت خود مطمئن شوید.</p>`;
+                container.innerHTML = `<div class="text-center text-red-400 p-4 bg-red-500/10 rounded-lg">
+                    <p class="font-bold"><i class="fa-solid fa-circle-exclamation ml-2"></i>خطا در بارگذاری سرورها</p>
+                    <p class="text-xs mt-2">لطفاً از صحت لینک اشتراک، فرمت Base64 محتوای آن و اتصال اینترنت خود مطمئن شوید.</p>
+                </div>`;
                 document.getElementById('configSelect').innerHTML = `<option>خطا در بارگذاری</option>`;
                 document.getElementById('qrcode').innerHTML = '';
             }
         }
 
-        /**
-         * Redesigned function to build the new config list UI.
-         */
         function buildConfigList() {
             const container = document.getElementById('config-list-container');
-            container.innerHTML = ''; // Clear previous content (like the loading message)
+            container.innerHTML = '';
 
             if (liveConfigs.length === 0) {
                  container.innerHTML = `<p class="text-center text-gray-400 p-8">هیچ سروری در لینک اشتراک یافت نشد.</p>`;
